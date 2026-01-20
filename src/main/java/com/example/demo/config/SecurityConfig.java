@@ -42,38 +42,26 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception { 
         http
-            // 1. Cấu hình CORS trước tiên
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            // 2. Tắt CSRF để cho phép POST từ domain khác
-            .csrf(csrf -> csrf.disable())
-            // 3. Phân quyền truy cập
+            .csrf(csrf -> csrf.disable()) // Tắt CSRF là bắt buộc cho REST API
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng Session
             .authorizeHttpRequests(auth -> auth
-                // === CHO PHÉP MỌI REQUEST OPTIONS (Pre-flight) ===
+                // 1. Luôn cho phép các request kiểm tra (Pre-flight) từ trình duyệt
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // === KHU VỰC PUBLIC (Không cần đăng nhập) ===
-                // Cho phép Auth (cả có /api và không có)
-                .requestMatchers("/api/auth/**", "/auth/**").permitAll()
+                // 2. Mở cửa các API Public (Cho cả trường hợp Frontend gọi thiếu /api)
+                .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/products/**", "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/categories/**", "/api/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/reviews/**", "/api/reviews/**").permitAll()
+                .requestMatchers("/uploads/**", "/images/**", "/static/**").permitAll()
                 
-                // Cho phép xem Sản phẩm (cả có /api và không có)
-                .requestMatchers(HttpMethod.GET, "/api/products/**", "/products/**").permitAll()
+                // 3. Các API yêu cầu quyền Admin
+                .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                 
-                // Cho phép xem Danh mục (cả có /api và không có)
-                .requestMatchers(HttpMethod.GET, "/api/categories/**", "/categories/**").permitAll()
-                
-                // Cho phép xem Đánh giá
-                .requestMatchers(HttpMethod.GET, "/api/reviews/**", "/reviews/**").permitAll()
-                
-                // Cho phép truy cập ảnh/file tĩnh
-                .requestMatchers("/uploads/**", "/images/**").permitAll()
-                
-                // === KHU VỰC ADMIN ===
-                .requestMatchers("/api/admin/**", "/admin/**").hasRole("ADMIN")
-                
-                // === CÒN LẠI PHẢI LOGIN ===
+                // 4. Tất cả các request còn lại phải được xác thực (có Token mới cho vào)
                 .anyRequest().authenticated()
             )
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -84,26 +72,29 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Danh sách các domain được phép gọi API
+        // Cấu hình các nguồn được phép (Add thêm link Vercel của bạn)
         configuration.setAllowedOrigins(Arrays.asList(
-            "https://jewelry-shop-frontend.vercel.app", // Link Production
-            "http://localhost:5173",                    // Link Dev React
+            "https://jewelry-shop-frontend.vercel.app",
+            "http://localhost:5173",
             "http://127.0.0.1:5173",
             "http://localhost:3000"
         ));
         
-        // Cho phép tất cả các method (GET, POST, PUT, DELETE...)
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
+        // Cho phép tất cả các phương thức
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         
-        // Cho phép tất cả các header (để tránh lỗi thiếu header Authorization/Content-Type)
-        configuration.setAllowedHeaders(Collections.singletonList("*"));
+        // Quan trọng: Cho phép các Headers cần thiết để Token JWT hoạt động
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         
-        // Cho phép gửi credentials (cookies, authorization headers)
+        // Cho phép gửi credentials (token, cookies)
         configuration.setAllowCredentials(true);
         
-        // Cho phép Frontend đọc được header trả về
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        // Tiết lộ Header Authorization để Frontend có thể lấy Token sau khi Login
+        configuration.setExposedHeaders(Collections.singletonList("Authorization"));
         
+        // Giữ cấu hình CORS trong 1 giờ để giảm bớt các request OPTIONS thừa
+        configuration.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
