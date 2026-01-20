@@ -1,0 +1,62 @@
+package com.example.demo.controller;
+
+import com.example.demo.dto.request.AdminUserUpdateRequest;
+import com.example.demo.dto.response.ApiResponse;
+import com.example.demo.dto.response.UserResponse;
+import com.example.demo.service.UserService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/admin/users") // Đặt base path là /api/admin/users
+@PreAuthorize("hasRole('ADMIN')") // CHỈ ADMIN MỚI ĐƯỢC TRUY CẬP
+@RequiredArgsConstructor
+public class AdminUserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
+        List<UserResponse> users = userService.getAllUsers();
+        return ResponseEntity.ok(ApiResponse.<List<UserResponse>>builder()
+                .success(true)
+                .data(users)
+                .build());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {
+        UserResponse user = userService.getUserById(id);
+        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
+                .success(true)
+                .data(user)
+                .build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminUserUpdateRequest request) {
+                
+        UserResponse updatedUser = userService.updateUserByAdmin(id, request);
+        return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
+                .success(true)
+                .message("Cập nhật người dùng thành công")
+                .data(updatedUser)
+                .build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Xóa người dùng thành công")
+                .build());
+    }
+}
