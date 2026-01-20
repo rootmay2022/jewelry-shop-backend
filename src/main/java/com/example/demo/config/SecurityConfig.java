@@ -1,7 +1,8 @@
 package com.example.demo.config;
 
-import com.example.demo.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
+import java.util.Arrays;
+import java.util.Collections;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -23,8 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.Collections;
+import com.example.demo.security.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -34,7 +34,6 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
-    // Constructor dùng @Lazy để phá vỡ vòng lặp bean
     public SecurityConfig(@Lazy JwtAuthenticationFilter jwtAuthFilter, UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
@@ -43,23 +42,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception { 
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Cấu hình CORS trực tiếp
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Mở cửa cho tất cả yêu cầu OPTIONS (Pre-flight request)
+                // Cho phép các yêu cầu Pre-flight (OPTIONS) đi qua hết
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // Mở cửa các API công khai (Sửa lại đường dẫn để khớp tuyệt đối)
+                // Mở cửa các API công khai
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/products", "/api/products/**").permitAll()
-                .requestMatchers("/api/categories", "/api/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 
-                // Phân quyền Admin
+                // Các API Admin và các yêu cầu thay đổi dữ liệu (POST/PUT/DELETE) cần quyền
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
-                // Còn lại phải đăng nhập
+                // Tất cả các yêu cầu còn lại phải xác thực
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -69,14 +68,28 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Tích hợp luôn CorsConfigurationSource vào đây cho chắc chắn
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"));
+        
+        // Thêm link Vercel và các link local để test thoải mái
+        configuration.setAllowedOrigins(Arrays.asList(
+            "https://jewelry-shop-frontend.vercel.app",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000"
+        ));
+        
+        // Cho phép các phương thức HTTP
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Collections.singletonList("*"));
+        
+        // Cho phép các Header cần thiết cho JWT
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
+        
+        // Quan trọng: cho phép gửi Cookie/Auth Header
         configuration.setAllowCredentials(true);
+        
+        // Để Frontend có thể đọc được Header Authorization nếu cần
         configuration.setExposedHeaders(Collections.singletonList("Authorization"));
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
