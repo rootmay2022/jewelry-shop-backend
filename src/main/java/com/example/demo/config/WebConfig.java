@@ -12,17 +12,19 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
 
-    // 1. Cấu hình để React có thể gọi API từ cổng 5173
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**") // Cho phép tất cả các đường dẫn API
-                .allowedOrigins("http://localhost:5173") // Địa chỉ của Frontend React
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Các phương thức cho phép
+        registry.addMapping("/**") 
+                .allowedOrigins(
+                    "http://localhost:5173", // Cho phép chạy ở máy để ní còn code tiếp
+                    "https://jewelry-shop-frontend.vercel.app" // ⚠️ BỎ DẤU "/" Ở CUỐI ĐI
+                ) 
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(true)
+                .maxAge(3600); // Thêm cái này để trình duyệt nhớ cấu hình, đỡ lag
     }
 
-    // 2. Cấu hình để hiển thị ảnh từ thư mục uploads (Giữ nguyên của bạn)
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")
