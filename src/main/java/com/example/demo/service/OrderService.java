@@ -35,7 +35,6 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
-    // --- GIỮ NGUYÊN LOGIC CŨ CỦA NÍ ---
     @Transactional
     public OrderResponse createOrder(Long userId, OrderRequest request) {
         User user = userRepository.findById(userId)
@@ -88,18 +87,16 @@ public class OrderService {
         return buildOrderResponse(order);
     }
 
-    // --- ĐÂY LÀ HÀM NÍ CÒN THIẾU KHIẾN RAILWAY BÁO LỖI ---
     public List<OrderResponse> getAllOrders() {
         return orderRepository.findAll().stream()
                 .map(this::buildOrderResponse)
                 .collect(Collectors.toList());
     }
 
-    // Thêm hàm lấy thống kê trạng thái để Dashboard vẽ biểu đồ tròn
     public Map<String, Long> getOrderStatsByStatus() {
         return orderRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
-                    order -> order.getStatus().name(),
+                    order -> order.getStatus() != null ? order.getStatus().name() : "UNKNOWN",
                     Collectors.counting()
                 ));
     }
@@ -153,7 +150,7 @@ public class OrderService {
                 .id(order.getId())
                 .userId(order.getUser().getId())
                 .orderDate(order.getOrderDate())
-                .status(order.getStatus().name())
+                .status(order.getStatus() != null ? order.getStatus().name() : null)
                 .totalAmount(order.getTotalAmount())
                 .shippingAddress(order.getShippingAddress())
                 .paymentMethod(order.getPaymentMethod())
