@@ -13,6 +13,7 @@ import com.example.demo.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -46,8 +47,9 @@ public class UserService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findByUsername(username)
+    public UserDetailsService loadUserByUsername(String username) throws UsernameNotFoundException {
+        // Chỉnh lại kiểu trả về cho đúng chuẩn interface
+        return (UserDetails) userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
@@ -77,17 +79,37 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
+    // HÀM LOGIN ĐÃ ĐƯỢC "ĐỘ" LẠI ĐỂ FIX LỖI
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+        try {
+            // 1. Xác thực qua AuthenticationManager
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (BadCredentialsException e) {
+            // Bắt lỗi sai mật khẩu cụ thể để tránh lỗi 502/CORS
+            throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không chính xác");
+        } catch (Exception e) {
+            // Các lỗi hệ thống khác
+            throw new RuntimeException("Lỗi xác thực hệ thống: " + e.getMessage());
+        }
+
+        // 2. Lấy thông tin User sau khi đã authenticate thành công
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Thông tin người dùng không tồn tại"));
+
+        // 3. Tạo Token JWT
         String token = jwtUtil.generateToken(user);
+
         return AuthResponse.builder()
-                .token(token).id(user.getId()).username(user.getUsername())
-                .email(user.getEmail()).role(user.getRole().name())
-                .fullName(user.getFullName()).phone(user.getPhone()).address(user.getAddress())
+                .token(token)
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .address(user.getAddress())
                 .build();
     }
 
