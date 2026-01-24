@@ -35,8 +35,7 @@ public class AuthController {
     }
     
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody LoginRequest request) {
-        // Tạm thời bỏ @Valid để test, tránh lỗi 400 do validation mật khẩu quá ngắn
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = userService.login(request);
         return ResponseEntity.ok(
             ApiResponse.<AuthResponse>builder()
