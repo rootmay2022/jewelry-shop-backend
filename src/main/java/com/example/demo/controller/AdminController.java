@@ -1,21 +1,29 @@
 package com.example.demo.controller;
 
-// 1. THÊM CÁC IMPORT NÀY
-import com.example.demo.dto.request.AdminUserUpdateRequest;
-import com.example.demo.dto.response.UserResponse;
-import com.example.demo.service.UserService;
-import jakarta.validation.Valid;
-// ---
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import com.example.demo.dto.response.ApiResponse;
-import com.example.demo.dto.response.OrderResponse;
-import com.example.demo.service.OrderService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.example.demo.dto.request.AdminUserUpdateRequest;
+import com.example.demo.dto.response.ApiResponse;
+import com.example.demo.dto.response.OrderResponse;
+import com.example.demo.dto.response.UserResponse;
+import com.example.demo.service.OrderService;
+import com.example.demo.service.UserService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -24,13 +32,27 @@ import java.util.List;
 public class AdminController {
 
     private final OrderService orderService;
-    private final UserService userService; // <-- 2. THÊM TRƯỜNG NÀY
+    private final UserService userService;
 
+    // Endpoint lấy danh sách đơn hàng cho bảng
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getAllOrders() {
         return ResponseEntity.ok(ApiResponse.<List<OrderResponse>>builder()
                 .success(true)
                 .data(orderService.getAllOrders())
+                .build());
+    }
+
+    // MỚI: Endpoint phục vụ biểu đồ và thống kê Dashboard.jsx
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("orders", orderService.getAllOrders()); // Để React tính doanh thu
+        stats.put("ordersByStatus", orderService.getOrderStatsByStatus()); // Để vẽ biểu đồ tròn
+        
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                .success(true)
+                .data(stats)
                 .build());
     }
 
@@ -45,11 +67,6 @@ public class AdminController {
                 .build());
     }
 
-    // ========== 3. THÊM CÁC ENDPOINT QUẢN LÝ USER ==========
-
-    /**
-     * Lấy tất cả người dùng (Admin only)
-     */
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
         return ResponseEntity.ok(ApiResponse.<List<UserResponse>>builder()
@@ -58,9 +75,6 @@ public class AdminController {
                 .build());
     }
 
-    /**
-     * Cập nhật thông tin người dùng (Admin only)
-     */
     @PutMapping("/users/{id}")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable Long id,
@@ -72,9 +86,6 @@ public class AdminController {
                 .build());
     }
 
-    /**
-     * Xóa người dùng (Admin only)
-     */
     @DeleteMapping("/users/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
@@ -82,5 +93,5 @@ public class AdminController {
                 .success(true)
                 .message("Xóa người dùng thành công")
                 .build());
-    }
+    } 
 }

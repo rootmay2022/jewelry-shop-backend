@@ -1,17 +1,29 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.request.OrderRequest;
-import com.example.demo.dto.response.OrderItemResponse;
-import com.example.demo.dto.response.OrderResponse;
-import com.example.demo.entity.*;
-import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.repository.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.demo.dto.request.OrderRequest;
+import com.example.demo.dto.response.OrderResponse;
+import com.example.demo.entity.Cart;
+import com.example.demo.entity.CartItem;
+import com.example.demo.entity.Order;
+import com.example.demo.entity.OrderItem;
+import com.example.demo.entity.Product;
+import com.example.demo.entity.User;
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.CartRepository;
+import com.example.demo.repository.OrderItemRepository;
+import com.example.demo.repository.OrderRepository;
+import com.example.demo.repository.ProductRepository;
+import com.example.demo.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +35,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
+    // --- GIỮ NGUYÊN LOGIC CŨ CỦA NÍ ---
     @Transactional
     public OrderResponse createOrder(Long userId, OrderRequest request) {
         User user = userRepository.findById(userId)
@@ -34,7 +47,6 @@ public class OrderService {
             throw new RuntimeException("Giỏ hàng trống");
         }
         
-        // Kiểm tra tồn kho
         for (CartItem cartItem : cart.getItems()) {
             Product product = cartItem.getProduct();
             if (product.getStockQuantity() < cartItem.getQuantity()) {
@@ -42,7 +54,6 @@ public class OrderService {
             }
         }
         
-        // Tạo order
         BigDecimal totalAmount = cart.getItems().stream()
                 .map(item -> item.getProduct().getPrice()
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
@@ -57,7 +68,6 @@ public class OrderService {
                 .build();
         orderRepository.save(order);
         
-        // Tạo order items và trừ tồn kho
         for (CartItem cartItem : cart.getItems()) {
             Product product = cartItem.getProduct();
             OrderItem orderItem = OrderItem.builder()
@@ -68,19 +78,32 @@ public class OrderService {
                     .build();
             
             orderItemRepository.save(orderItem);
-            
-            // Trừ tồn kho
             product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
             productRepository.save(product);
         }
         
-        // Xóa giỏ hàng
         cart.getItems().clear();
         cartRepository.save(cart);
         
         return buildOrderResponse(order);
     }
-    
+
+    // --- ĐÂY LÀ HÀM NÍ CÒN THIẾU KHIẾN RAILWAY BÁO LỖI ---
+    public List<OrderResponse> getAllOrders() {
+        return orderRepository.findAll().stream()
+                .map(this::buildOrderResponse)
+                .collect(Collectors.toList());
+    }
+
+    // Thêm hàm lấy thống kê trạng thái để Dashboard vẽ biểu đồ tròn
+    public Map<String, Long> getOrderStatsByStatus() {
+        return orderRepository.findAll().stream()
+                .collect(Collectors.groupingBy(
+                    order -> order.getStatus().name(),
+                    Collectors.counting()
+                ));
+    }
+
     public List<OrderResponse> getUserOrders(Long userId) {
         return orderRepository.findUserOrdersOrderByDateDesc(userId).stream()
                 .map(this::buildOrderResponse)
