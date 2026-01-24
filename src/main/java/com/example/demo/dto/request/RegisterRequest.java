@@ -1,6 +1,10 @@
 package com.example.demo.dto.request;
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
@@ -18,7 +22,7 @@ public class RegisterRequest {
     private String password;
 @NotBlank(message = "Họ tên không được để trống")
     private String fullName;
-    
+        
     private String phone;
     private String address;
 }
