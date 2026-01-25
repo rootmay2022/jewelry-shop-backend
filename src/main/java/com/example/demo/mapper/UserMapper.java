@@ -17,6 +17,8 @@ public class UserMapper {
                 .address(user.getAddress())
                 .role(user.getRole().name()) // Chuyển Enum thành String
                 .createdAt(user.getCreatedAt())
+                // --- THÊM DÒNG NÀY ĐỂ TRẢ VỀ DEVICE ID ---
+                .deviceId(user.getDeviceId()) 
                 .build();
     }
 }

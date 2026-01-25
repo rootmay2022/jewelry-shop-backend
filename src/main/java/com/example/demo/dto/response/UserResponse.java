@@ -1,8 +1,9 @@
 package com.example.demo.dto.response;
 
+import java.time.LocalDateTime;
+
 import lombok.Builder;
 import lombok.Data;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -15,4 +16,5 @@ public class UserResponse {
     private String address;
     private String role; // Sẽ là "USER" hoặc "ADMIN"
     private LocalDateTime createdAt;
+    private String deviceId;
 }
