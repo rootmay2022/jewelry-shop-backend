@@ -61,6 +61,8 @@ public class UserService implements UserDetailsService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email đã tồn tại");
         }
+        
+        // --- CHÈN THÊM deviceId VÀO BUILDER ---
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -68,8 +70,10 @@ public class UserService implements UserDetailsService {
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .address(request.getAddress())
+                .deviceId(request.getDevice_id()) // Thêm dòng này để lưu mã thiết bị khi đăng ký
                 .role(User.Role.USER)
                 .build();
+        
         userRepository.save(user);
         String token = jwtUtil.generateToken(user);
         return AuthResponse.builder()
@@ -79,7 +83,8 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
-    // HÀM LOGIN ĐÃ ĐƯỢC "ĐỘ" LẠI ĐỂ FIX LỖI
+    // HÀM LOGIN ĐÃ ĐƯỢC "ĐỘ" LẠI ĐỂ FIX LỖI VÀ CẬP NHẬT DEVICE ID
+    @Transactional // Thêm Transactional để đảm bảo việc save(user) mượt mà
     public AuthResponse login(LoginRequest request) {
         try {
             // 1. Xác thực qua AuthenticationManager
@@ -97,6 +102,13 @@ public class UserService implements UserDetailsService {
         // 2. Lấy thông tin User sau khi đã authenticate thành công
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Thông tin người dùng không tồn tại"));
+
+        // --- CẬP NHẬT DEVICE ID MỚI NHẤT MỖI KHI ĐĂNG NHẬP ---
+        if (request.getDevice_id() != null && !request.getDevice_id().isEmpty()) {
+            user.setDeviceId(request.getDevice_id());
+            userRepository.save(user); // Lưu lại thiết bị cuối cùng sử dụng
+        }
+        // ---------------------------------------------------
 
         // 3. Tạo Token JWT
         String token = jwtUtil.generateToken(user);

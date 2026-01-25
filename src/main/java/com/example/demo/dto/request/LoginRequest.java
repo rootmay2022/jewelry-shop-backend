@@ -16,4 +16,7 @@ public class LoginRequest {
 
     @NotBlank(message = "Password không được để trống")
     private String password;
+
+    // --- THÊM DÒNG NÀY ĐỂ HỨNG MÃ THIẾT BỊ KHI ĐĂNG NHẬP ---
+    private String device_id; 
 }
