@@ -31,5 +31,12 @@ public class RegisterRequest {
     private String address;
 
    @com.fasterxml.jackson.annotation.JsonProperty("device_id")
-    private String device_id; 
+    private String device_id;
+    public String getDevice_id() {
+    return device_id;
+}
+
+public void setDevice_id(String device_id) {
+    this.device_id = device_id;
+}
 }
