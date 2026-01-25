@@ -1,8 +1,6 @@
 package com.example.demo.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonProperty; // THÊM IMPORT NÀY
-
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank; // THÊM IMPORT NÀY
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +17,7 @@ public class LoginRequest {
     @NotBlank(message = "Password không được để trống")
     private String password;
 
-    @JsonProperty("device_id") // ÉP JACKSON ĐỌC ĐÚNG TÊN NÀY
+
+    @com.fasterxml.jackson.annotation.JsonProperty("device_id")
     private String device_id; 
 }

@@ -1,8 +1,6 @@
 package com.example.demo.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonProperty; // THÊM IMPORT NÀY
-
-import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Email; // THÊM IMPORT NÀY
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -32,6 +30,6 @@ public class RegisterRequest {
     private String phone;
     private String address;
 
-    @JsonProperty("device_id") // ÉP JACKSON ĐỌC ĐÚNG TÊN NÀY
+   @com.fasterxml.jackson.annotation.JsonProperty("device_id")
     private String device_id; 
 }
