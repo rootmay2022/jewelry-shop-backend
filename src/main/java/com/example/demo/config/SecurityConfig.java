@@ -38,13 +38,16 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/auth/**").permitAll() // Cho phép tất cả những gì bắt đầu bằng /auth
-                .requestMatchers("/api/auth/**").permitAll() // Thêm dòng này cho chắc ăn nếu ní vẫn bị chặn
-                .requestMatchers("/auth/**").permitAll() // CHO PHÉP ĐƯỜNG DẪN NÀY
-                .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**").permitAll()
-                .anyRequest().authenticated()
-            )
+    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+    // 1. Chỉ giữ lại những thằng thực sự tồn tại trong Controller của ní (không có /auth)
+    .requestMatchers("/login", "/register", "/forgot-password", "/reset-password").permitAll()
+    
+    // 2. Cho phép các API xem hàng không cần login
+    .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**").permitAll()
+    
+    // 3. Tất cả các request khác (Admin, Profile...) thì phải có Token mới được vào
+    .anyRequest().authenticated()
+)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
