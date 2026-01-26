@@ -3,7 +3,7 @@ package com.example.demo.service;
 import com.example.demo.dto.request.AdminUserUpdateRequest;
 import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.request.RegisterRequest;
-import com.example.demo.dto.request.ResetPasswordRequest; // THÊM MỚI
+import com.example.demo.dto.request.ResetPasswordRequest;
 import com.example.demo.dto.response.AuthResponse;
 import com.example.demo.dto.response.UserResponse;
 import com.example.demo.entity.User;
@@ -56,7 +56,6 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
-    // --- CÁC HÀM CŨ CỦA NÍ GIỮ NGUYÊN ---
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) throw new RuntimeException("Username đã tồn tại");
@@ -109,60 +108,52 @@ public class UserService implements UserDetailsService {
     }
 
     // ============================================================
-    // --- PHẦN THÊM MỚI: XỬ LÝ QUÊN MẬT KHẨU ---
+    // --- XỬ LÝ QUÊN MẬT KHẨU ---
     // ============================================================
 
     @Transactional
-   public void forgotPassword(String email) {
-    // 1. Thêm dòng này để check Log Railway
-    System.out.println("===> DEBUG: Email nhan tu Controller la: [" + email + "]");
+    public void forgotPassword(String email) {
+        System.out.println("===> DEBUG: Backend dang tim email: [" + email + "]");
 
-    if (email == null || email.isEmpty()) {
-        throw new RuntimeException("Backend không nhận được email từ Frontend!");
+        if (email == null || email.trim().isEmpty()) {
+            throw new RuntimeException("Email không được để trống!");
+        }
+
+        // Dùng trim() để loại bỏ khoảng trắng dư thừa
+        User user = userRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new RuntimeException("Email '" + email + "' không tồn tại trên hệ thống!"));
+
+        String otp = String.format("%06d", new Random().nextInt(1000000));
+        user.setOtp(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        userRepository.save(user);
+
+        System.out.println("-----------------------------------------");
+        System.out.println("MÃ OTP CỦA NÍ ĐÂY: " + otp);
+        System.out.println("-----------------------------------------");
     }
-
-    // 2. Xử lý dấu cách thừa (Trường hợp ní copy-paste bị dư khoảng trắng)
-    String cleanEmail = email.trim();
-
-    // 3. Tìm user (Nên dùng findByEmailIgnoreCase nếu ní có thể sửa Repository)
-    User user = userRepository.findByEmail(cleanEmail)
-            .orElseThrow(() -> new RuntimeException("Email '" + cleanEmail + "' không tồn tại trên hệ thống"));
-
-    // ... phần còn lại giữ nguyên
-    String otp = String.format("%06d", new Random().nextInt(1000000));
-    user.setOtp(otp);
-    user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
-    userRepository.save(user);
-
-    System.out.println("-----------------------------------------");
-    System.out.println("MÃ OTP KHÔI PHỤC CỦA NÍ LÀ: " + otp);
-    System.out.println("-----------------------------------------");
-}
 
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        // 1. Tìm user
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(request.getEmail().trim())
                 .orElseThrow(() -> new RuntimeException("Thông tin không hợp lệ"));
 
-        // 2. Kiểm tra OTP
         if (user.getOtp() == null || !user.getOtp().equals(request.getOtp())) {
             throw new RuntimeException("Mã OTP không chính xác");
         }
 
-        // 3. Kiểm tra hết hạn
         if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Mã OTP đã hết hạn");
         }
 
-        // 4. Cập nhật mật khẩu và xóa OTP
-        user.setPassword(passwordEncoder.encode(request.getN    ewPassword()));
+        // ĐÃ FIX LỖI TYPO request.getNewPassword()
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setOtp(null);
         user.setOtpExpiry(null);
         userRepository.save(user);
     }
 
-    // --- CÁC HÀM QUẢN LÝ USER CỦA NÍ ---
+    // --- QUẢN LÝ USER ---
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream().map(userMapper::toResponse).collect(Collectors.toList());
     }
