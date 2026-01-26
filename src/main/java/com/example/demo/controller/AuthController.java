@@ -40,10 +40,15 @@ public class AuthController {
 
     // --- THÊM PHẦN QUÊN MẬT KHẨU VÀO ĐÂY NÈ ---
 
-    @PostMapping("/forgot-password")
+    // AuthController.java
+@PostMapping("/forgot-password")
 public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-    userService.forgotPassword(request.getEmail());
-    return ResponseEntity.ok("OTP sent");
+    // Phải lấy email từ trong cái request ra như vầy nè
+    userService.forgotPassword(request.getEmail()); 
+    return ResponseEntity.ok(ApiResponse.builder()
+            .success(true)
+            .message("Mã OTP đã được gửi")
+            .build());
 }
 
 @PostMapping("/reset-password")

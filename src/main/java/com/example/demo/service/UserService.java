@@ -113,24 +113,31 @@ public class UserService implements UserDetailsService {
     // ============================================================
 
     @Transactional
-    public void forgotPassword(String email) {
-        // 1. Tìm user theo email (Phải thêm hàm này vào UserRepository)
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại trên hệ thống"));
+   public void forgotPassword(String email) {
+    // 1. Thêm dòng này để check Log Railway
+    System.out.println("===> DEBUG: Email nhan tu Controller la: [" + email + "]");
 
-        // 2. Tạo mã OTP 6 số
-        String otp = String.format("%06d", new Random().nextInt(1000000));
-
-        // 3. Lưu OTP và thời gian hết hạn (5 phút)
-        user.setOtp(otp);
-        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
-        userRepository.save(user);
-
-        // 4. Tạm thời in ra Console để ní test (Sau này gắn MailService vào đây)
-        System.out.println("-----------------------------------------");
-        System.out.println("MÃ OTP KHÔI PHỤC CỦA NÍ LÀ: " + otp);
-        System.out.println("-----------------------------------------");
+    if (email == null || email.isEmpty()) {
+        throw new RuntimeException("Backend không nhận được email từ Frontend!");
     }
+
+    // 2. Xử lý dấu cách thừa (Trường hợp ní copy-paste bị dư khoảng trắng)
+    String cleanEmail = email.trim();
+
+    // 3. Tìm user (Nên dùng findByEmailIgnoreCase nếu ní có thể sửa Repository)
+    User user = userRepository.findByEmail(cleanEmail)
+            .orElseThrow(() -> new RuntimeException("Email '" + cleanEmail + "' không tồn tại trên hệ thống"));
+
+    // ... phần còn lại giữ nguyên
+    String otp = String.format("%06d", new Random().nextInt(1000000));
+    user.setOtp(otp);
+    user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+    userRepository.save(user);
+
+    System.out.println("-----------------------------------------");
+    System.out.println("MÃ OTP KHÔI PHỤC CỦA NÍ LÀ: " + otp);
+    System.out.println("-----------------------------------------");
+}
 
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
