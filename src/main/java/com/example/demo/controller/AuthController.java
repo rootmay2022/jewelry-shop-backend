@@ -1,12 +1,7 @@
 package com.example.demo.controller;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.bind.annotation.*;
 import com.example.demo.dto.request.ForgotPasswordRequest;
 import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.request.RegisterRequest;
@@ -14,12 +9,11 @@ import com.example.demo.dto.request.ResetPasswordRequest;
 import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.dto.response.AuthResponse;
 import com.example.demo.service.UserService;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/auth") // ĐÃ BỎ /api để khớp với SecurityConfig và context-path
+@RequestMapping("/auth") 
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AuthController {
@@ -38,17 +32,16 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<AuthResponse>builder().success(true).message("Đăng nhập thành công").data(response).build());
     }
 
-    // API Gửi OTP quên mật khẩu
-    @PostMapping("/send-otp")
+    // Đổi tên endpoint về lại forgot-password cho khớp với Frontend ní đang gọi
+    @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         userService.forgotPassword(request.getEmail()); 
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
-                .message("Mã OTP đã được gửi về Log hệ thống")
+                .message("Mã OTP đã được gửi")
                 .build());
     }
 
-    // API Reset mật khẩu
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody ResetPasswordRequest request) {
         userService.resetPassword(request);
