@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.demo.dto.request.ForgotPasswordRequest;
 import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.request.RegisterRequest;
-import com.example.demo.dto.request.ResetPasswordRequest;
 import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.dto.response.AuthResponse;
 import com.example.demo.service.UserService;
@@ -38,21 +37,22 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<AuthResponse>builder().success(true).message("Đăng ký thành công").data(response).build());
     }
 
-    @PostMapping("/forgot-password") // Dùng tên này cho khớp với Fend
+   // API Gửi OTP - Dùng tên /forgot-password cho đúng nghĩa
+    @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         userService.forgotPassword(request.getEmail()); 
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
-                .message("Mã OTP đã được gửi")
+                .message("Mã OTP đã được gửi về Log hệ thống")
                 .build());
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody com.example.demo.dto.request.ResetPasswordRequest request) {
         userService.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Mật khẩu đã được đặt lại thành công")
                 .build());
     }
-}
+}   
