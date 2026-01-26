@@ -4,8 +4,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping; // Ní nhớ tạo DTO này
-import org.springframework.web.bind.annotation.RestController;  // Và DTO này nữa
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.request.ForgotPasswordRequest;
 import com.example.demo.dto.request.LoginRequest;
@@ -19,7 +19,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/auth") // ĐÃ BỎ /api để khớp với SecurityConfig và context-path
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AuthController {
@@ -38,21 +38,23 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<AuthResponse>builder().success(true).message("Đăng nhập thành công").data(response).build());
     }
 
-    // --- THÊM PHẦN QUÊN MẬT KHẨU VÀO ĐÂY NÈ ---
+    // API Gửi OTP quên mật khẩu
+    @PostMapping("/send-otp")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        userService.forgotPassword(request.getEmail()); 
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Mã OTP đã được gửi về Log hệ thống")
+                .build());
+    }
 
-    // AuthController.java
-@PostMapping("/send-otp") // Đổi từ forgot-password thành send-otp để tránh trùng lặp nếu có
-public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-    userService.forgotPassword(request.getEmail()); 
-    return ResponseEntity.ok(ApiResponse.builder()
-            .success(true)
-            .message("Mã OTP đã được gửi")
-            .build());
-}
-
-@PostMapping("/reset-password")
-public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
-    userService.resetPassword(request);
-    return ResponseEntity.ok("Password reset successfully");
-}
+    // API Reset mật khẩu
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Mật khẩu đã được đặt lại thành công")
+                .build());
+    }
 }

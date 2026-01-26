@@ -111,17 +111,17 @@ public class UserService implements UserDetailsService {
     // --- XỬ LÝ QUÊN MẬT KHẨU ---
     // ============================================================
 
-    @Transactional
-    public void forgotPassword(String email) {
-        System.out.println("===> DEBUG: Backend dang tim email: [" + email + "]");
+   @Transactional
+public void forgotPassword(String email) {
+    // Thêm dòng này để nhìn thấy tận mắt email trong Log Railway
+    System.out.println("===> CHECKPOINT: Email nhan vao la: [" + email + "]");
 
-        if (email == null || email.trim().isEmpty()) {
-            throw new RuntimeException("Email không được để trống!");
-        }
-
-        // Dùng trim() để loại bỏ khoảng trắng dư thừa
-        User user = userRepository.findByEmail(email.trim())
-                .orElseThrow(() -> new RuntimeException("Email '" + email + "' không tồn tại trên hệ thống!"));
+    if (email == null) {
+        throw new RuntimeException("LỖI: Backend nhận email bị NULL!");
+    }
+    
+    User user = userRepository.findByEmail(email.trim())
+            .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
 
         String otp = String.format("%06d", new Random().nextInt(1000000));
         user.setOtp(otp);
