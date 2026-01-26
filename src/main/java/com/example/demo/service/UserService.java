@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.dto.request.AdminUserUpdateRequest;
 import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.request.RegisterRequest;
+import com.example.demo.dto.request.ResetPasswordRequest; // THÊM MỚI
 import com.example.demo.dto.response.AuthResponse;
 import com.example.demo.dto.response.UserResponse;
 import com.example.demo.entity.User;
@@ -21,7 +22,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,21 +52,16 @@ public class UserService implements UserDetailsService {
 
     @Override
     public UserDetailsService loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Chỉnh lại kiểu trả về cho đúng chuẩn interface
         return (UserDetails) userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
+    // --- CÁC HÀM CŨ CỦA NÍ GIỮ NGUYÊN ---
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username đã tồn tại");
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email đã tồn tại");
-        }
+        if (userRepository.existsByUsername(request.getUsername())) throw new RuntimeException("Username đã tồn tại");
+        if (userRepository.existsByEmail(request.getEmail())) throw new RuntimeException("Email đã tồn tại");
         
-        // --- CHÈN THÊM deviceId VÀO BUILDER ---
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -70,7 +69,7 @@ public class UserService implements UserDetailsService {
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .address(request.getAddress())
-                .deviceId(request.getDevice_id()) // Thêm dòng này để lưu mã thiết bị khi đăng ký
+                .deviceId(request.getDevice_id())
                 .role(User.Role.USER)
                 .build();
         
@@ -83,48 +82,80 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
-    // HÀM LOGIN ĐÃ ĐƯỢC "ĐỘ" LẠI ĐỂ FIX LỖI VÀ CẬP NHẬT DEVICE ID
-    @Transactional // Thêm Transactional để đảm bảo việc save(user) mượt mà
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         try {
-            // 1. Xác thực qua AuthenticationManager
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
         } catch (BadCredentialsException e) {
-            // Bắt lỗi sai mật khẩu cụ thể để tránh lỗi 502/CORS
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không chính xác");
-        } catch (Exception e) {
-            // Các lỗi hệ thống khác
-            throw new RuntimeException("Lỗi xác thực hệ thống: " + e.getMessage());
         }
 
-        // 2. Lấy thông tin User sau khi đã authenticate thành công
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Thông tin người dùng không tồn tại"));
 
-        // --- CẬP NHẬT DEVICE ID MỚI NHẤT MỖI KHI ĐĂNG NHẬP ---
         if (request.getDevice_id() != null && !request.getDevice_id().isEmpty()) {
             user.setDeviceId(request.getDevice_id());
-            userRepository.save(user); // Lưu lại thiết bị cuối cùng sử dụng
+            userRepository.save(user);
         }
-        // ---------------------------------------------------
 
-        // 3. Tạo Token JWT
         String token = jwtUtil.generateToken(user);
-
         return AuthResponse.builder()
-                .token(token)
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .role(user.getRole().name())
-                .fullName(user.getFullName())
-                .phone(user.getPhone())
-                .address(user.getAddress())
+                .token(token).id(user.getId()).username(user.getUsername())
+                .email(user.getEmail()).role(user.getRole().name())
+                .fullName(user.getFullName()).phone(user.getPhone()).address(user.getAddress())
                 .build();
     }
 
+    // ============================================================
+    // --- PHẦN THÊM MỚI: XỬ LÝ QUÊN MẬT KHẨU ---
+    // ============================================================
+
+    @Transactional
+    public void forgotPassword(String email) {
+        // 1. Tìm user theo email (Phải thêm hàm này vào UserRepository)
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trên hệ thống"));
+
+        // 2. Tạo mã OTP 6 số
+        String otp = String.format("%06d", new Random().nextInt(1000000));
+
+        // 3. Lưu OTP và thời gian hết hạn (5 phút)
+        user.setOtp(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        userRepository.save(user);
+
+        // 4. Tạm thời in ra Console để ní test (Sau này gắn MailService vào đây)
+        System.out.println("-----------------------------------------");
+        System.out.println("MÃ OTP KHÔI PHỤC CỦA NÍ LÀ: " + otp);
+        System.out.println("-----------------------------------------");
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        // 1. Tìm user
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Thông tin không hợp lệ"));
+
+        // 2. Kiểm tra OTP
+        if (user.getOtp() == null || !user.getOtp().equals(request.getOtp())) {
+            throw new RuntimeException("Mã OTP không chính xác");
+        }
+
+        // 3. Kiểm tra hết hạn
+        if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Mã OTP đã hết hạn");
+        }
+
+        // 4. Cập nhật mật khẩu và xóa OTP
+        user.setPassword(passwordEncoder.encode(request.getN    ewPassword()));
+        user.setOtp(null);
+        user.setOtpExpiry(null);
+        userRepository.save(user);
+    }
+
+    // --- CÁC HÀM QUẢN LÝ USER CỦA NÍ ---
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream().map(userMapper::toResponse).collect(Collectors.toList());
     }

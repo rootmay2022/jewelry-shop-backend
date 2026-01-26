@@ -53,6 +53,11 @@ public class User implements UserDetails {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    @Column(name = "otp")
+    private String otp; // Lưu mã 6 số để kiểm tra
+
+    @Column(name = "otp_expiry")
+    private LocalDateTime otpExpiry; // Thời gian mã hết hiệu lực
     
     @PrePersist
     protected void onCreate() {
