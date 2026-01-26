@@ -32,7 +32,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<AuthResponse>builder().success(true).message("Đăng nhập thành công").data(response).build());
     }
 
-    // Đổi tên endpoint về lại forgot-password cho khớp với Frontend ní đang gọi
+    // ĐỔI LẠI THÀNH forgot-password ĐỂ KHỚP VỚI FRONTEND CỦA NÍ
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         userService.forgotPassword(request.getEmail()); 
