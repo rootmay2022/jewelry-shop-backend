@@ -38,15 +38,14 @@ public class AuthController {
     }
 
    // API Gửi OTP - Dùng tên /forgot-password cho đúng nghĩa
-    @PostMapping("/forgot-password")
+    @PostMapping("/forgot-password") // Tổng đường dẫn: /api/auth/forgot-password
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         userService.forgotPassword(request.getEmail()); 
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
-                .message("Mã OTP đã được gửi về Log hệ thống")
+                .message("Mã OTP đã được in ra Log Railway")
                 .build());
     }
-
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody com.example.demo.dto.request.ResetPasswordRequest request) {
         userService.resetPassword(request);

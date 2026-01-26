@@ -41,10 +41,10 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
            .authorizeHttpRequests(auth -> auth
     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-    .requestMatchers("/auth/**").permitAll() // CHO PHÉP TẤT CẢ API BẮT ĐẦU BẰNG /auth
+    .requestMatchers("/auth/**").permitAll() // CHỈ CẦN DÒNG NÀY LÀ ĐỦ
     .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**").permitAll()
     .anyRequest().authenticated()
-)
+                )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
