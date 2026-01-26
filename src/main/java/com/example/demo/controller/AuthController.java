@@ -41,9 +41,8 @@ public class AuthController {
     // --- THÊM PHẦN QUÊN MẬT KHẨU VÀO ĐÂY NÈ ---
 
     // AuthController.java
-@PostMapping("/forgot-password")
+@PostMapping("/send-otp") // Đổi từ forgot-password thành send-otp để tránh trùng lặp nếu có
 public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-    // Phải lấy email từ trong cái request ra như vầy nè
     userService.forgotPassword(request.getEmail()); 
     return ResponseEntity.ok(ApiResponse.builder()
             .success(true)
