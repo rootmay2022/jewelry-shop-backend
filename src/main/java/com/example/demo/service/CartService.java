@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Service; // ĐỔI THÀNH JAKARTA
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.dto.request.CartItemRequest;
@@ -21,6 +21,7 @@ import com.example.demo.repository.CartRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -31,6 +32,7 @@ public class CartService {
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final EntityManager entityManager; 
 
     public CartResponse getCartByUserId(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
@@ -46,7 +48,8 @@ public class CartService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
-        // 1. Chặn ngay từ đầu nếu mua quá kho
+        entityManager.refresh(product); // Ép bốc số 40 từ DB
+
         if (product.getStockQuantity() < request.getQuantity()) {
             throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
         }
@@ -57,9 +60,8 @@ public class CartService {
 
         if (existingItem != null) {
             int newQuantity = existingItem.getQuantity() + request.getQuantity();
-            // 2. Chặn nếu cộng dồn vào giỏ hàng vượt quá 40 món (ví dụ kho có 40)
             if (newQuantity > product.getStockQuantity()) {
-                throw new RuntimeException("Tổng số lượng trong giỏ hàng vượt quá tồn kho hiện có");
+                throw new RuntimeException("Tổng số lượng vượt quá tồn kho");
             }
             existingItem.setQuantity(newQuantity);
             cartItemRepository.save(existingItem);
@@ -71,7 +73,6 @@ public class CartService {
                     .build();
             cartItemRepository.save(newItem);
             
-            // Đảm bảo list trong object Cart được cập nhật để buildResponse không sót
             if (cart.getItems() == null) cart.setItems(new ArrayList<>());
             cart.getItems().add(newItem);
         }
@@ -90,9 +91,10 @@ public class CartService {
             throw new RuntimeException("Item không thuộc giỏ hàng này");
         }
         
-        // 3. Chặn khi khách nhấn nút (+) trên giao diện React
+        entityManager.refresh(item.getProduct());
+        
         if (quantity > 0 && quantity > item.getProduct().getStockQuantity()) {
-            throw new RuntimeException("Chỉ còn " + item.getProduct().getStockQuantity() + " sản phẩm trong kho");
+            throw new RuntimeException("Chỉ còn " + item.getProduct().getStockQuantity() + " sản phẩm");
         }
         
         if (quantity <= 0) {
@@ -120,20 +122,13 @@ public class CartService {
         cartItemRepository.delete(item);
     }
 
-    
-   @Transactional
-public void clearCart(Long userId) {
-    Cart cart = cartRepository.findByUserId(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giỏ hàng"));
-    
-    // Xóa sạch ở DB
-    cartItemRepository.deleteAllByCartId(cart.getId());
-    
-    // Xóa sạch ở RAM (để React nhận về list rỗng ngay)
-    if (cart.getItems() != null) {
-        cart.getItems().clear();
+    @Transactional
+    public void clearCart(Long userId) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giỏ hàng"));
+        cartItemRepository.deleteAllByCartId(cart.getId());
+        if (cart.getItems() != null) cart.getItems().clear();
     }
-}
 
     private Cart createCartForUser(Long userId) {
         User user = userRepository.findById(userId)
@@ -145,19 +140,15 @@ public void clearCart(Long userId) {
         return cartRepository.save(cart);
     }
     
-    // HÀM QUAN TRỌNG NHẤT: Trả số 40 (stockQuantity) về cho React
     private CartResponse buildCartResponse(Cart cart) {
         if (cart.getItems() == null) {
-            return CartResponse.builder()
-                    .id(cart.getId())
-                    .items(new ArrayList<>())
-                    .totalAmount(BigDecimal.ZERO)
-                    .build();
+            return CartResponse.builder().id(cart.getId()).items(new ArrayList<>()).totalAmount(BigDecimal.ZERO).build();
         }
 
         List<CartItemResponse> items = cart.getItems().stream()
                 .map(item -> {
                     Product p = item.getProduct();
+                    entityManager.refresh(p); 
                     return CartItemResponse.builder()
                             .id(item.getId())
                             .productId(p.getId())
@@ -165,7 +156,6 @@ public void clearCart(Long userId) {
                             .productImage(p.getImageUrl())
                             .price(p.getPrice())
                             .quantity(item.getQuantity())
-                            // ĐẨY SỐ TỒN KHO VỀ ĐÂY NÈ NÍ
                             .stockQuantity(p.getStockQuantity()) 
                             .subtotal(p.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                             .build();
@@ -176,10 +166,6 @@ public void clearCart(Long userId) {
                 .map(CartItemResponse::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return CartResponse.builder()
-                .id(cart.getId())
-                .items(items)
-                .totalAmount(total)
-                .build();
+        return CartResponse.builder().id(cart.getId()).items(items).totalAmount(total).build();
     }
 }
