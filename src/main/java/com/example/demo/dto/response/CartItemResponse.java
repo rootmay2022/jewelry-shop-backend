@@ -1,7 +1,9 @@
 package com.example.demo.dto.response;
 
-import lombok.*;
 import java.math.BigDecimal;
+
+import lombok.Builder;
+import lombok.Data;
 
 @Data
 @Builder
@@ -12,5 +14,6 @@ public class CartItemResponse {
     private String productImage;
 private BigDecimal price;
     private Integer quantity;
+    private Integer stockQuantity;
     private BigDecimal subtotal;
 }
