@@ -18,7 +18,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/auth") // Đặt lại là /auth cho thống nhất
+// --- SỬA DÒNG NÀY: Thêm /api vào trước /auth ---
+@RequestMapping("/api/auth") 
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AuthController {
@@ -37,8 +38,8 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.<AuthResponse>builder().success(true).message("Đăng ký thành công").data(response).build());
     }
 
-   // API Gửi OTP - Dùng tên /forgot-password cho đúng nghĩa
-    @PostMapping("/forgot-password") // Tổng đường dẫn: /api/auth/forgot-password
+   // API Gửi OTP
+    @PostMapping("/forgot-password") 
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         userService.forgotPassword(request.getEmail()); 
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -46,6 +47,7 @@ public class AuthController {
                 .message("Mã OTP đã được in ra Log Railway")
                 .build());
     }
+    
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody com.example.demo.dto.request.ResetPasswordRequest request) {
         userService.resetPassword(request);
@@ -54,4 +56,4 @@ public class AuthController {
                 .message("Mật khẩu đã được đặt lại thành công")
                 .build());
     }
-}   
+}
