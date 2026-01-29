@@ -24,7 +24,7 @@ public class Cart {
     private List<CartItem> items = new ArrayList<>();
 @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-@PrePersist
+@PrePersistz
     protected void onCreate() {
         createdAt = LocalDateTime.now();
 }
