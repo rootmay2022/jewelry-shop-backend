@@ -46,26 +46,30 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // 1. Cho phép tất cả request OPTIONS (CORS pre-flight)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // --- FIX QUAN TRỌNG: Thêm /api/ vào trước các đường dẫn ---
-                .requestMatchers("/api/auth/**", "/auth/**").permitAll() 
-                .requestMatchers(HttpMethod.GET, 
-                    "/api/products/**", 
-                    "/api/categories/**",
-                    "/api/reviews/product/**" // Cho phép xem review không cần login
-                ).permitAll()
-                // Cho phép truy cập ảnh upload công khai
-                .requestMatchers("/uploads/**").permitAll()
+                
+                // 2. QUAN TRỌNG: Cho phép truy cập trang lỗi để biết tại sao sai
+                .requestMatchers("/error").permitAll() 
+                
+                // 3. Mở cửa cho các API public
+                .requestMatchers("/api/auth/**", "/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/**", "/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/categories/**", "/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/reviews/**", "/reviews/**").permitAll()
+                
+                // 4. Cho phép truy cập file ảnh
+                .requestMatchers("/uploads/**", "/api/uploads/**").permitAll()
+                
+                // 5. Các request còn lại bắt buộc đăng nhập
                 .anyRequest().authenticated()
             )
-            .authenticationProvider(authenticationProvider()) // Thêm Provider để login được
+            .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // --- FIX LỖI LOGIN: Bổ sung các Bean còn thiếu ---
-    
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -84,16 +88,13 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // --- CẤU HÌNH CORS ---
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "https://jewelry-shop-frontend.vercel.app", 
-            "http://localhost:5173", 
-            "http://localhost:3000"
-        ));
+        
+        // Dùng AllowedOriginPatterns thay vì AllowedOrigins để tránh lỗi khi dùng Credentials
+        config.setAllowedOriginPatterns(List.of("*")); 
+        
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         config.setAllowCredentials(true);
