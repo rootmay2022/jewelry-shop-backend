@@ -1,10 +1,14 @@
 package com.example.demo.dto.response;
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
 
 @Data
 @Builder
 public class AuthResponse {
     private String token;
+// Cũ: private String type = "Bearer";
+// Mới:
+@Builder.Default 
 private String type = "Bearer";
     private Long id;
     private String username;

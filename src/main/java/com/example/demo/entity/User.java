@@ -1,14 +1,27 @@
 package com.example.demo.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "users")
@@ -40,10 +53,11 @@ public class User implements UserDetails {
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    // --- THÊM CỘT DEVICE_ID VÀO ĐÂY ---
     @Column(name = "device_id")
     private String deviceId; 
 
+    // --- FIX QUAN TRỌNG: Thêm @Builder.Default để nhận giá trị mặc định ---
+   @Builder.Default // Add this
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.USER;
@@ -53,11 +67,12 @@ public class User implements UserDetails {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
     @Column(name = "otp")
-    private String otp; // Lưu mã 6 số để kiểm tra
+    private String otp; 
 
     @Column(name = "otp_expiry")
-    private LocalDateTime otpExpiry; // Thời gian mã hết hiệu lực
+    private LocalDateTime otpExpiry; 
     
     @PrePersist
     protected void onCreate() {

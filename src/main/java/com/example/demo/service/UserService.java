@@ -1,16 +1,10 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.request.AdminUserUpdateRequest;
-import com.example.demo.dto.request.LoginRequest;
-import com.example.demo.dto.request.RegisterRequest;
-import com.example.demo.dto.request.ResetPasswordRequest;
-import com.example.demo.dto.response.AuthResponse;
-import com.example.demo.dto.response.UserResponse;
-import com.example.demo.entity.User;
-import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.mapper.UserMapper;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.security.JwtUtil;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,10 +17,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
+import com.example.demo.dto.request.AdminUserUpdateRequest;
+import com.example.demo.dto.request.LoginRequest;
+import com.example.demo.dto.request.RegisterRequest;
+import com.example.demo.dto.request.ResetPasswordRequest;
+import com.example.demo.dto.response.AuthResponse;
+import com.example.demo.dto.response.UserResponse;
+import com.example.demo.entity.User;
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.mapper.UserMapper;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.security.JwtUtil;
 
 @Service
 public class UserService implements UserDetailsService {
@@ -50,8 +51,9 @@ public class UserService implements UserDetailsService {
         this.userMapper = userMapper;
     }
 
+   // --- FIX: Change return type from UserDetailsService to UserDetails ---
     @Override
-    public UserDetailsService loadUserByUsername(String username) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return (UserDetails) userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
