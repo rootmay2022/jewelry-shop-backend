@@ -1,16 +1,10 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.request.AdminUserUpdateRequest;
-import com.example.demo.dto.request.LoginRequest;
-import com.example.demo.dto.request.RegisterRequest;
-import com.example.demo.dto.request.ResetPasswordRequest;
-import com.example.demo.dto.response.AuthResponse;
-import com.example.demo.dto.response.UserResponse;
-import com.example.demo.entity.User;
-import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.mapper.UserMapper;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.security.JwtUtil;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,10 +17,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
+import com.example.demo.dto.request.AdminUserUpdateRequest;
+import com.example.demo.dto.request.LoginRequest;
+import com.example.demo.dto.request.RegisterRequest;
+import com.example.demo.dto.request.ResetPasswordRequest;
+import com.example.demo.dto.response.AuthResponse;
+import com.example.demo.dto.response.UserResponse;
+import com.example.demo.entity.User;
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.mapper.UserMapper;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.security.JwtUtil;
 
 @Service
 public class UserService implements UserDetailsService {
@@ -50,11 +51,17 @@ public class UserService implements UserDetailsService {
         this.userMapper = userMapper;
     }
 
+    // --- CHỖ NÀY ĐÃ SỬA: Thay UserDetailsService bằng UserDetails ---
+    // ... các đoạn code phía trên giữ nguyên ...
+
     @Override
-    public UserDetailsService loadUserByUsername(String username) throws UsernameNotFoundException {
-        return (UserDetails) userRepository.findByUsername(username)
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // Chỗ này TRƯỚC ĐÓ ní để là UserDetailsService (Sai) -> Đã sửa thành UserDetails (Đúng)
+        return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
+
+    // ... các đoạn code phía dưới giữ nguyên ...
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -107,21 +114,16 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
-    // ============================================================
-    // --- XỬ LÝ QUÊN MẬT KHẨU ---
-    // ============================================================
+    @Transactional
+    public void forgotPassword(String email) {
+        System.out.println("===> CHECKPOINT: Email nhan vao la: [" + email + "]");
 
-   @Transactional
-public void forgotPassword(String email) {
-    // Thêm dòng này để nhìn thấy tận mắt email trong Log Railway
-    System.out.println("===> CHECKPOINT: Email nhan vao la: [" + email + "]");
-
-    if (email == null) {
-        throw new RuntimeException("LỖI: Backend nhận email bị NULL!");
-    }
-    
-    User user = userRepository.findByEmail(email.trim())
-            .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+        if (email == null) {
+            throw new RuntimeException("LỖI: Backend nhận email bị NULL!");
+        }
+        
+        User user = userRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
 
         String otp = String.format("%06d", new Random().nextInt(1000000));
         user.setOtp(otp);
@@ -146,14 +148,12 @@ public void forgotPassword(String email) {
             throw new RuntimeException("Mã OTP đã hết hạn");
         }
 
-        // ĐÃ FIX LỖI TYPO request.getNewPassword()
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setOtp(null);
         user.setOtpExpiry(null);
         userRepository.save(user);
     }
 
-    // --- QUẢN LÝ USER ---
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream().map(userMapper::toResponse).collect(Collectors.toList());
     }
