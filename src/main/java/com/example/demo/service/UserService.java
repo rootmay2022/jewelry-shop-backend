@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -38,7 +37,7 @@ public class UserService implements UserDetailsService {
     private final AuthenticationManager authenticationManager;
     private final UserMapper userMapper;
 
-    @Autowired
+    // FIX 1: Xóa @Autowired thừa (Constructor duy nhất không cần annotation này)
     public UserService(UserRepository userRepository,
                        @Lazy PasswordEncoder passwordEncoder, 
                        JwtUtil jwtUtil,
@@ -51,17 +50,13 @@ public class UserService implements UserDetailsService {
         this.userMapper = userMapper;
     }
 
-    // --- CHỖ NÀY ĐÃ SỬA: Thay UserDetailsService bằng UserDetails ---
-    // ... các đoạn code phía trên giữ nguyên ...
-
+    // FIX 2: Sửa kiểu trả về từ UserDetailsService thành UserDetails
+    // Đây là lỗi khiến Railway của ní bị "đỏ lòm" khi build (incompatible types)
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Chỗ này TRƯỚC ĐÓ ní để là UserDetailsService (Sai) -> Đã sửa thành UserDetails (Đúng)
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
-
-    // ... các đoạn code phía dưới giữ nguyên ...
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -116,10 +111,8 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public void forgotPassword(String email) {
-        System.out.println("===> CHECKPOINT: Email nhan vao la: [" + email + "]");
-
-        if (email == null) {
-            throw new RuntimeException("LỖI: Backend nhận email bị NULL!");
+        if (email == null || email.trim().isEmpty()) {
+            throw new RuntimeException("LỖI: Backend nhận email bị trống!");
         }
         
         User user = userRepository.findByEmail(email.trim())
@@ -130,6 +123,7 @@ public class UserService implements UserDetailsService {
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
 
+        // In ra log để ní test cho dễ
         System.out.println("-----------------------------------------");
         System.out.println("MÃ OTP CỦA NÍ ĐÂY: " + otp);
         System.out.println("-----------------------------------------");
@@ -155,17 +149,21 @@ public class UserService implements UserDetailsService {
     }
 
     public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream().map(userMapper::toResponse).collect(Collectors.toList());
+        return userRepository.findAll().stream()
+                .map(userMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     public UserResponse getUserById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
         return userMapper.toResponse(user);
     }
 
     @Transactional
     public UserResponse updateUserByAdmin(Long id, AdminUserUpdateRequest request) {
-        User user = userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         user.setAddress(request.getAddress());
