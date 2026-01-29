@@ -1,6 +1,8 @@
 package com.example.demo.exception;
 
-import com.example.demo.dto.response.ApiResponse;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -8,12 +10,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.example.demo.dto.response.ApiResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    
+    // 2. THÊM HÀM NÀY VÀO ĐỂ BẮT LỖI 404 CHUẨN
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .message("Sai đường dẫn (404): " + ex.getResourcePath())
+                        .build());
+    }
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
