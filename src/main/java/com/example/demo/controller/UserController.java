@@ -1,6 +1,8 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.request.ChangePasswordRequest;
 import com.example.demo.dto.request.UserUpdateRequest;
+import com.example.demo.dto.request.AdminUserUpdateRequest;
 import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.dto.response.UserResponse;
 import com.example.demo.service.UserService;
@@ -12,18 +14,24 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class UserController {
 
     private final UserService userService;
 
-    // Sửa lỗi 404: Đón PUT /api/users/{id}
+    // API Cập nhật hồ sơ (fullName, phone, address)
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
             @PathVariable Long id,
-            @Valid @RequestBody UserUpdateRequest request) { // Dùng DTO mới
+            @Valid @RequestBody UserUpdateRequest request) {
         
-        // Bạn cần viết thêm hàm này trong UserService hoặc tận dụng hàm cũ
-        UserResponse response = userService.updateUserByAdmin(id, castToAdminRequest(request));
+        AdminUserUpdateRequest adminReq = new AdminUserUpdateRequest();
+        adminReq.setFullName(request.getFullName());
+        adminReq.setPhone(request.getPhone());
+        adminReq.setAddress(request.getAddress());
+        adminReq.setRole(null); // Tránh lỗi NullPointerException toUpperCase()
+
+        UserResponse response = userService.updateUserByAdmin(id, adminReq);
         
         return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
                 .success(true)
@@ -32,12 +40,16 @@ public class UserController {
                 .build());
     }
 
-    // Hàm phụ để map DTO (nếu bạn không muốn sửa UserService)
-    private com.example.demo.dto.request.AdminUserUpdateRequest castToAdminRequest(UserUpdateRequest req) {
-        com.example.demo.dto.request.AdminUserUpdateRequest adminReq = new com.example.demo.dto.request.AdminUserUpdateRequest();
-        adminReq.setFullName(req.getFullName());
-        adminReq.setPhone(req.getPhone());
-        adminReq.setAddress(req.getAddress());
-        return adminReq;
+    // API Đổi mật khẩu
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        
+        userService.changePassword(request);
+        
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Đổi mật khẩu thành công")
+                .build());
     }
 }

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.dto.request.AdminUserUpdateRequest;
+import com.example.demo.dto.request.ChangePasswordRequest; // Đã thêm import
 import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.request.RegisterRequest;
 import com.example.demo.dto.request.ResetPasswordRequest;
@@ -51,7 +52,6 @@ public class UserService implements UserDetailsService {
         this.userMapper = userMapper;
     }
 
-   // --- FIX: Change return type from UserDetailsService to UserDetails ---
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return (UserDetails) userRepository.findByUsername(username)
@@ -110,20 +110,43 @@ public class UserService implements UserDetailsService {
     }
 
     // ============================================================
+    // --- XỬ LÝ ĐỔI MẬT KHẨU (MỚI) ---
+    // ============================================================
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        // 1. Tìm User theo ID
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
+
+        // 2. Kiểm tra mật khẩu cũ
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu hiện tại không chính xác");
+        }
+
+        // 3. Kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp nhau không
+        if (!request.getNewPassword().equals(request.getConfirmationPassword())) {
+            throw new RuntimeException("Mật khẩu xác nhận không khớp");
+        }
+
+        // 4. Mã hóa và lưu mật khẩu mới
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    // ============================================================
     // --- XỬ LÝ QUÊN MẬT KHẨU ---
     // ============================================================
 
-   @Transactional
-public void forgotPassword(String email) {
-    // Thêm dòng này để nhìn thấy tận mắt email trong Log Railway
-    System.out.println("===> CHECKPOINT: Email nhan vao la: [" + email + "]");
+    @Transactional
+    public void forgotPassword(String email) {
+        System.out.println("===> CHECKPOINT: Email nhan vao la: [" + email + "]");
 
-    if (email == null) {
-        throw new RuntimeException("LỖI: Backend nhận email bị NULL!");
-    }
-    
-    User user = userRepository.findByEmail(email.trim())
-            .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+        if (email == null) {
+            throw new RuntimeException("LỖI: Backend nhận email bị NULL!");
+        }
+        
+        User user = userRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
 
         String otp = String.format("%06d", new Random().nextInt(1000000));
         user.setOtp(otp);
@@ -148,7 +171,6 @@ public void forgotPassword(String email) {
             throw new RuntimeException("Mã OTP đã hết hạn");
         }
 
-        // ĐÃ FIX LỖI TYPO request.getNewPassword()
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setOtp(null);
         user.setOtpExpiry(null);
@@ -168,10 +190,21 @@ public void forgotPassword(String email) {
     @Transactional
     public UserResponse updateUserByAdmin(Long id, AdminUserUpdateRequest request) {
         User user = userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+        
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         user.setAddress(request.getAddress());
-        user.setRole(User.Role.valueOf(request.getRole().toUpperCase()));
+        
+        // --- FIX LỖI toUpperCase() khi Role bị NULL ---
+        if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
+            try {
+                user.setRole(User.Role.valueOf(request.getRole().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Role không hợp lệ: " + request.getRole());
+            }
+        }
+        // Nếu role gửi lên là null (như khi user tự sửa profile), ta giữ nguyên role cũ.
+
         return userMapper.toResponse(userRepository.save(user));
     }
 
