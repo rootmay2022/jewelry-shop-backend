@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.dto.request.AdminUserUpdateRequest;
-import com.example.demo.dto.request.ChangePasswordRequest; // Đã thêm import
+import com.example.demo.dto.request.ChangePasswordRequest;
 import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.request.RegisterRequest;
 import com.example.demo.dto.request.ResetPasswordRequest;
@@ -38,18 +38,21 @@ public class UserService implements UserDetailsService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final UserMapper userMapper;
+    private final EmailService emailService; // 1. Khai báo EmailService
 
     @Autowired
     public UserService(UserRepository userRepository,
                        @Lazy PasswordEncoder passwordEncoder, 
                        JwtUtil jwtUtil,
                        @Lazy AuthenticationManager authenticationManager,
-                       UserMapper userMapper) {
+                       UserMapper userMapper,
+                       EmailService emailService) { // 2. Inject EmailService vào Constructor
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
         this.userMapper = userMapper;
+        this.emailService = emailService;
     }
 
     @Override
@@ -109,53 +112,45 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
-    // ============================================================
-    // --- XỬ LÝ ĐỔI MẬT KHẨU (MỚI) ---
-    // ============================================================
     @Transactional
     public void changePassword(ChangePasswordRequest request) {
-        // 1. Tìm User theo ID
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
 
-        // 2. Kiểm tra mật khẩu cũ
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu hiện tại không chính xác");
         }
 
-        // 3. Kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp nhau không
         if (!request.getNewPassword().equals(request.getConfirmationPassword())) {
             throw new RuntimeException("Mật khẩu xác nhận không khớp");
         }
 
-        // 4. Mã hóa và lưu mật khẩu mới
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
 
-    // ============================================================
-    // --- XỬ LÝ QUÊN MẬT KHẨU ---
-    // ============================================================
-
+    // --- QUÊN MẬT KHẨU (GỬI MAIL) ---
     @Transactional
     public void forgotPassword(String email) {
-        System.out.println("===> CHECKPOINT: Email nhan vao la: [" + email + "]");
+        System.out.println("===> Đang xử lý quên mật khẩu cho: [" + email + "]");
 
-        if (email == null) {
-            throw new RuntimeException("LỖI: Backend nhận email bị NULL!");
+        if (email == null || email.trim().isEmpty()) {
+            throw new RuntimeException("Email không được để trống!");
         }
         
         User user = userRepository.findByEmail(email.trim())
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
 
+        // Tạo OTP ngẫu nhiên 6 số
         String otp = String.format("%06d", new Random().nextInt(1000000));
+        
+        // Lưu OTP vào Database
         user.setOtp(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
 
-        System.out.println("-----------------------------------------");
-        System.out.println("MÃ OTP CỦA NÍ ĐÂY: " + otp);
-        System.out.println("-----------------------------------------");
+        // Gọi EmailService để gửi mail thật
+        emailService.sendOtpEmail(user.getEmail(), otp);
     }
 
     @Transactional
@@ -177,7 +172,6 @@ public class UserService implements UserDetailsService {
         userRepository.save(user);
     }
 
-    // --- QUẢN LÝ USER ---
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream().map(userMapper::toResponse).collect(Collectors.toList());
     }
@@ -195,7 +189,7 @@ public class UserService implements UserDetailsService {
         user.setPhone(request.getPhone());
         user.setAddress(request.getAddress());
         
-        // --- FIX LỖI toUpperCase() khi Role bị NULL ---
+        // Logic fix lỗi Role null
         if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
             try {
                 user.setRole(User.Role.valueOf(request.getRole().toUpperCase()));
@@ -203,8 +197,6 @@ public class UserService implements UserDetailsService {
                 throw new RuntimeException("Role không hợp lệ: " + request.getRole());
             }
         }
-        // Nếu role gửi lên là null (như khi user tự sửa profile), ta giữ nguyên role cũ.
-
         return userMapper.toResponse(userRepository.save(user));
     }
 
