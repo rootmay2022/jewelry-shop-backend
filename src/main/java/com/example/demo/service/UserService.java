@@ -130,29 +130,24 @@ public class UserService implements UserDetailsService {
     }
 
     // --- QUÊN MẬT KHẨU (GỬI MAIL) ---
-    @Transactional
-    public void forgotPassword(String email) {
-        System.out.println("===> Đang xử lý quên mật khẩu cho: [" + email + "]");
-
-        if (email == null || email.trim().isEmpty()) {
-            throw new RuntimeException("Email không được để trống!");
-        }
-        
-        User user = userRepository.findByEmail(email.trim())
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
-
-        // Tạo OTP ngẫu nhiên 6 số
-        String otp = String.format("%06d", new Random().nextInt(1000000));
-        
-        // Lưu OTP vào Database
-        user.setOtp(otp);
-        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
-        userRepository.save(user);
-
-        // Gọi EmailService để gửi mail thật
-        emailService.sendOtpEmail(user.getEmail(), otp);
+@Transactional
+public void forgotPassword(String email) {
+    if (email == null || email.trim().isEmpty()) {
+        throw new RuntimeException("Email không được để trống!");
     }
+    
+    // Sử dụng hàm Smart để "diệt" dấu cách thừa trong DB
+    User user = userRepository.findByEmailSmart(email.trim())
+            .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
 
+    // Tạo OTP và gửi email
+    String otp = String.format("%06d", new Random().nextInt(1000000));
+    user.setOtp(otp);
+    user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+    userRepository.save(user);
+
+    emailService.sendOtpEmail(user.getEmail(), otp);
+}
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail().trim())
