@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Service; // ĐỔI THÀNH JAKARTA
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.dto.request.CartItemRequest;
@@ -48,7 +48,7 @@ public class CartService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
-        entityManager.refresh(product); // Ép bốc số 40 từ DB
+        entityManager.refresh(product); 
 
         if (product.getStockQuantity() < request.getQuantity()) {
             throw new RuntimeException("Sản phẩm không đủ số lượng trong kho");
@@ -98,8 +98,8 @@ public class CartService {
         }
         
         if (quantity <= 0) {
+            cart.getItems().remove(item); // Xóa khỏi list trong memory để response đúng
             cartItemRepository.delete(item);
-            cart.getItems().remove(item);
         } else {
             item.setQuantity(quantity);
             cartItemRepository.save(item);
@@ -108,8 +108,9 @@ public class CartService {
         return buildCartResponse(cart);
     }
 
+    // --- ĐÃ SỬA: Trả về CartResponse thay vì void ---
     @Transactional
-    public void removeItemFromCart(Long userId, Long itemId) {
+    public CartResponse removeItemFromCart(Long userId, Long itemId) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giỏ hàng"));
         CartItem item = cartItemRepository.findById(itemId)
@@ -119,15 +120,26 @@ public class CartService {
             throw new RuntimeException("Item không thuộc giỏ hàng này");
         }
         
+        // Quan trọng: Xóa khỏi list memory trước khi trả về để frontend cập nhật ngay
+        cart.getItems().remove(item);
         cartItemRepository.delete(item);
+        
+        return buildCartResponse(cart);
     }
 
+    // --- ĐÃ SỬA: Trả về CartResponse thay vì void ---
     @Transactional
-    public void clearCart(Long userId) {
+    public CartResponse clearCart(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giỏ hàng"));
+        
         cartItemRepository.deleteAllByCartId(cart.getId());
-        if (cart.getItems() != null) cart.getItems().clear();
+        
+        if (cart.getItems() != null) {
+            cart.getItems().clear();
+        }
+        
+        return buildCartResponse(cart);
     }
 
     private Cart createCartForUser(Long userId) {
@@ -141,14 +153,14 @@ public class CartService {
     }
     
     private CartResponse buildCartResponse(Cart cart) {
-        if (cart.getItems() == null) {
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
             return CartResponse.builder().id(cart.getId()).items(new ArrayList<>()).totalAmount(BigDecimal.ZERO).build();
         }
 
         List<CartItemResponse> items = cart.getItems().stream()
                 .map(item -> {
                     Product p = item.getProduct();
-                    entityManager.refresh(p); 
+                    // entityManager.refresh(p); // Có thể comment lại nếu gây chậm, chỉ bật khi cần thiết
                     return CartItemResponse.builder()
                             .id(item.getId())
                             .productId(p.getId())
