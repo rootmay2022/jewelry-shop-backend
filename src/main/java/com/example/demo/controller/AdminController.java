@@ -34,7 +34,11 @@ public class AdminController {
     private final OrderService orderService;
     private final UserService userService;
 
-    // Endpoint lấy danh sách đơn hàng cho bảng
+    // --- QUẢN LÝ ĐƠN HÀNG ---
+
+    /**
+     * Lấy danh sách toàn bộ đơn hàng cho trang OrderManagement.jsx
+     */
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getAllOrders() {
         return ResponseEntity.ok(ApiResponse.<List<OrderResponse>>builder()
@@ -43,19 +47,10 @@ public class AdminController {
                 .build());
     }
 
-    // MỚI: Endpoint phục vụ biểu đồ và thống kê Dashboard.jsx
-    @GetMapping("/dashboard/stats")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboardStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("orders", orderService.getAllOrders()); // Để React tính doanh thu
-        stats.put("ordersByStatus", orderService.getOrderStatsByStatus()); // Để vẽ biểu đồ tròn
-        
-        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
-                .success(true)
-                .data(stats)
-                .build());
-    }
-
+    /**
+     * Cập nhật trạng thái đơn hàng. 
+     * Nếu status là 'DELIVERED', logic trừ kho trong OrderService sẽ được kích hoạt.
+     */
     @PutMapping("/orders/{orderId}/status")
     public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
             @PathVariable Long orderId,
@@ -66,6 +61,25 @@ public class AdminController {
                 .data(orderService.updateOrderStatus(orderId, status))
                 .build());
     }
+
+    /**
+     * Thống kê Dashboard: Doanh thu và Biểu đồ trạng thái
+     */
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
+        // Gửi toàn bộ đơn hàng để Frontend tự tính toán doanh thu linh hoạt
+        stats.put("orders", orderService.getAllOrders()); 
+        // Gửi dữ liệu đã nhóm theo trạng thái để vẽ biểu đồ tròn (Pie Chart)
+        stats.put("ordersByStatus", orderService.getOrderStatsByStatus()); 
+        
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                .success(true)
+                .data(stats)
+                .build());
+    }
+
+    // --- QUẢN LÝ NGƯỜI DÙNG ---
 
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
